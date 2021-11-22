@@ -35,12 +35,23 @@ func main() {
 	//load the environment variables
 	//err := godotenv.Load()
 
-	router := gin.Default()
-	router.GET("/rentals", getRentals)
-	router.GET("/rentals/:id", getRental)
-	router.POST("/rentals", postRental)
+	//router using custom middleware for CORS purposes
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(gin.Logger())
+	r.Use(CORSMiddleware())
+	r.GET("/rentals", getRentals)
 
-	router.Run("localhost:8080")
+	r.Run("localhost:8080")
+
+	/*
+		router := gin.Default()
+		router.GET("/rentals", getRentals)
+		router.GET("/rentals/:id", getRental)
+		router.POST("/rentals", postRental)
+
+		router.Run("localhost:8080")
+	*/
 
 	/*if err != nil {
 		log.Fatal("error loading env file")
@@ -52,6 +63,23 @@ func main() {
 	for _, cus := range jamies {
 		fmt.Printf("Customer: %s %s", cus.firstName, cus.lastName)
 	}*/
+}
+
+//copied from StackOverflow for educational purposes, can use official gin CORS methods at github.com/gin-contrib/cors
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*") //TODO: change * to specific URL, otherwise it's public
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
 }
 
 func getRentals(c *gin.Context) {
