@@ -5,6 +5,7 @@ import (
 	//"fmt"
 	//"log"
 	//"os"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -41,6 +42,8 @@ func main() {
 	r.Use(gin.Logger())
 	r.Use(CORSMiddleware())
 	r.GET("/rentals", getRentals)
+	r.POST("/rentals", postRental)
+	r.DELETE("/rentals/:id", deleteRental)
 
 	r.Run("localhost:8080")
 
@@ -71,7 +74,7 @@ func CORSMiddleware() gin.HandlerFunc {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*") //TODO: change * to specific URL, otherwise it's public
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -102,11 +105,41 @@ func getRental(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "rental not found"})
 }
 
+func deleteRental(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "non-int id found"})
+		return
+	}
+
+	for index, a := range rentals {
+		if a.ID == id {
+			precedingArr := rentals[:index]
+			followingArr := rentals[index+1:]
+			rentals = append(precedingArr, followingArr...)
+			c.IndentedJSON(http.StatusNoContent, gin.H{"message": "Resource located and deleted"})
+			return
+		}
+	}
+
+	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "ID not located"})
+}
+
 func postRental(c *gin.Context) {
 	var newRecord RentalRecord
 
 	if err := c.BindJSON(&newRecord); err != nil {
+		fmt.Print(err)
 		return
+	}
+
+	//check for duplicate ID
+	for _, a := range rentals {
+		if a.ID == newRecord.ID {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "ID exists"})
+			fmt.Printf("ID exists\n, new ID: %v", newRecord.ID)
+			return
+		}
 	}
 
 	rentals = append(rentals, newRecord)
